@@ -13,16 +13,11 @@ fi
 NL="%0A"
 validation_errors=""
 
-jq -rc '.errors[]' "$RESULTS_PATH"
-
-for entry in $(jq -rc '.errors[]' "$RESULTS_PATH"); do
-	if [[ -z "$entry" ]]; then
-		continue
-	fi
-
-	keywork_location=$(echo "$entry" | jq -r '.keywordLocation')
-	instance_location=$(echo "$entry" | jq -r '.instanceLocation')
-	error=$(echo "$entry" | jq -r '.error')
+readarray -t entries < <(jq -c '.errors[]' "$RESULTS_PATH")
+for entry in "${entries[@]}"; do
+	keywork_location=$(jq -r '.keywordLocation' <<< "$entry")
+	instance_location=$(jq -r '.instanceLocation' <<< "$entry")
+	error=$(jq -r '.error' <<< "$entry")
 
 	validation_errors+="$NL- Error: $error"
 	validation_errors+="$NL  Keyword location: $keywork_location"
