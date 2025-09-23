@@ -2,41 +2,39 @@
 
 Composite action that validates a YAML file against JSON schema.
 
-Might be useful when you need to download a file from a repository in a GitHub Actions context, and you don't want to clone the whole repository.
+Under the hood it uses [jsonschema CLI](https://github.com/sourcemeta/jsonschema) to perform the validation.
 
-Dependencies: `curl` and `jq` must be installed in the environment where this action is being used.
+To specify the schema, you should use the `yaml-language-server` comment like this:
+
+```yaml
+# yaml-language-server: $schema=[URI]
+abc:
+  def: ghi
+klm:
+  - nop
+  - qrs
+```
+
+The URI can be a local file (e.g. `some/path/to/schema.json`) or a remote one (e.g. `https://json.schemastore.org/github-workflow.json`).
+
+> [!TIP]
+> This comment syntax is created and supported by [YAML Language Support by Red Hat](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) VSCode extension, so you can get validation in your editor as well.
 
 ## Usage
 
-Example of downloading a file from the same repository where the action is being used:
-
 ```yaml
-- name: Get myFile.txt from this repository
-  uses: cdqag/action-download-repository-file@v1
-    with:
-      file: some-directory/sub-directory/myFile.txt
-```
-
-Example of downloading a file from a different repository:
-
-```yaml
-- name: Get myFile.txt from another repository
-  uses: cdqag/action-download-repository-file@v1
-    with:
-      repository: owner/repo
-      file: some-directory/sub-directory/myFile.txt
-      destination: custom-file-name.txt
-      github-token: ${{ steps.get-token.outputs.token }}  # Note: You need to provide a token with access to the repository. Default `${{ github.token }}` only has access to the current repository!
+uses: cdqag/action-validate-yaml@v1
+with:
+  file: path/to/file.yaml
 ```
 
 ## Inputs
 
 | Name | Description | Required | Default |
 |---|---|---|---|
-| `github-token` | GitHub token that will be used to download the file| No | Default GitHub Token with access only to current repository |
-| `repository` | GitHub repository name in format `owner/repo-name` | No | Current repository |
-| `file` | Path to the file (relative to the repository root) | **Yes** | |
-| `destination` | Where to store the downloaded file contents| No | Name of the downloaded file |
+| `file` | Path to the YAML file to validate. | **Yes** | |
+| `schema` | JSON schema to validate against. If not provided, the action will try to extract it from the YAML file using the comment `# yaml-language-server: $schema=URL`. | No | empty string |
+| `schema-dialect` | JSON schema dialect. Only used if not provided in the schema. Value must have format: `https://json-schema.org/[path]/schema` | No | empty string |
 
 ## License
 
