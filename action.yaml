@@ -28,25 +28,7 @@ runs:
       env:
         TARGET_FILE: ${{ inputs.file }}
         SCHEMA_INPUT: ${{ inputs.schema }}
-      run: |
-        if [ -n "$SCHEMA_INPUT" ]; then
-          echo "Using provided schema URI"
-          echo "uri=$SCHEMA_INPUT" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-        echo "No schema URI provided, trying to extract it from the YAML file"
-
-        REGEXP="# *yaml-language-server: *.schema=(.*)"
-
-        while IFS= read -r line; do
-          if [[ $line =~ $REGEXP ]]; then
-            echo "uri=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-        done < "$TARGET_FILE"
-
-        echo "::error::No schema URL found in $TARGET_FILE"
-        exit 1
+      run: ${{ github.action_path }}/src/get-schema-uri.sh
 
     - name: Fetch schema
       id: fetch-schema
@@ -54,30 +36,7 @@ runs:
       env:
         SCHEMA_URI: ${{ steps.get-schema-uri.outputs.uri }}
         SCHEMA_PATH: ${{ runner.temp }}/schema.json
-      run: |
-        HTTP_REGEXP="^https?://"
-
-        if ! [[ $SCHEMA_URI =~ $HTTP_REGEXP ]]; then
-          echo "::debug::Schema URI is not an HTTP(S) - checking if it's a local file"
-          
-          if [ ! -f "$SCHEMA_URI" ]; then
-            echo "::error::Schema URI is not a valid HTTP(S) URL or a local file: $SCHEMA_URI"
-            exit 1
-          fi
-
-          echo "::debug::Schema URL is a local file"
-          cp "$SCHEMA_URI" "$SCHEMA_PATH"
-        
-        else
-          echo "::debug::Schema URI is an HTTP(S) URL - downloading it"
-          curl -sSL "$SCHEMA_URI" -o "$SCHEMA_PATH"
-          if [ $? -ne 0 ]; then
-            echo "::error::Failed to download schema from $SCHEMA_URI"
-            exit 1
-          fi
-        fi
-
-        echo "path=$SCHEMA_PATH" >> $GITHUB_OUTPUT
+      run: ${{ github.action_path }}/src/fetch-schema.sh
 
     - name: Check schema dialect
       id: check-schema-dialect
@@ -85,18 +44,7 @@ runs:
       env:
         SCHEMA_PATH: ${{ steps.fetch-schema.outputs.path }}
         SCHEMA_DIALECT_INPUT: ${{ inputs.schema-dialect }}
-      run: |
-        SCHEMA_DIALECT=$(jq -r '.["$schema"]' "$SCHEMA_PATH")
-        if [ "$SCHEMA_DIALECT" == "null" ]; then
-          SCHEMA_DIALECT="$SCHEMA_DIALECT_INPUT"
-        fi
-
-        if [ -z "$SCHEMA_DIALECT" ]; then
-          echo "::error::No schema dialect provided or found in the schema"
-          exit 1
-        fi
-
-        echo "dialect=$SCHEMA_DIALECT" >> $GITHUB_OUTPUT
+      run: ${{ github.action_path }}/src/check-schema-dialect.sh
 
     - name: Install the JSON Schema CLI
       uses: sourcemeta/jsonschema@v11.8.3
@@ -108,25 +56,4 @@ runs:
         SCHEMA_PATH: ${{ steps.fetch-schema.outputs.path }}
         SCHEMA_DIALECT: ${{ steps.check-schema-dialect.outputs.dialect }}
         RESULTS_PATH: ${{ runner.temp }}/results.json
-      run: |
-        jsonschema validate --default-dialect "$SCHEMA_DIALECT" "$SCHEMA_PATH" "$YAML_FILE" --json > "$RESULTS_PATH" || true
-
-        verdict=$(jq -r '.valid' "$RESULTS_PATH")
-        if [[ "$verdict" == "true" ]]; then
-          echo "YAML file is valid"
-          exit 0
-        fi
-
-        NL="%0A"
-        validation_errors=""
-
-        for entry in $(jq -rc '.errors[]' "$RESULTS_PATH"); do
-          keywork_location=$(echo "$entry" | jq -r '.keywordLocation')
-          instance_location=$(echo "$entry" | jq -r '.instanceLocation')
-          error=$(echo "$entry" | jq -r '.error')
-
-          validation_errors+="$NL- Error: $error$NL  Keyword location: $keywork_location$NL  Instance location: $instance_location" 
-        done
-
-        echo "::error title=YAML validation failed::Validation of YAML file '$YAML_FILE' has failed due to:$validation_errors"
-        exit 2
+      run: ${{ github.action_path }}/src/validate-yaml.sh
