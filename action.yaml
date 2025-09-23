@@ -1,4 +1,4 @@
-name: Validate YAML
+name: Validate YAML against JSON Schema
 description: Composite action that validates a given YAML file against a JSON schema
 
 author: "CDQ AG"
