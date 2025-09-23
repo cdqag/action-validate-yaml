@@ -107,7 +107,26 @@ runs:
         YAML_FILE: ${{ inputs.file }}
         SCHEMA_PATH: ${{ steps.fetch-schema.outputs.path }}
         SCHEMA_DIALECT: ${{ steps.check-schema-dialect.outputs.dialect }}
+        RESULTS_PATH: ${{ runner.temp }}/results.json
       run: |
-        jsonschema validate --default-dialect "$SCHEMA_DIALECT" "$SCHEMA_PATH" "$YAML_FILE"
+        jsonschema validate --default-dialect "$SCHEMA_DIALECT" "$SCHEMA_PATH" "$YAML_FILE" --json > "$RESULTS_PATH" || true
 
-        echo "OK"
+        verdict=$(jq -r '.valid' "$RESULTS_PATH")
+        if [[ "$verdict" == "true" ]]; then
+          echo "YAML file is valid"
+          exit 0
+        fi
+
+        NL="%0A"
+        validation_errors=""
+
+        for entry in $(jq -rc '.errors[]' "$RESULTS_PATH"); do
+          keywork_location=$(echo "$entry" | jq -r '.keywordLocation')
+          instance_location=$(echo "$entry" | jq -r '.instanceLocation')
+          error=$(echo "$entry" | jq -r '.error')
+
+          validation_errors+="$NL- Error: $error$NL  Keyword location: $keywork_location$NL  Instance location: $instance_location" 
+        done
+
+        echo "::error title=YAML validation failed::Validation of YAML file '$YAML_FILE' has failed due to:$validation_errors"
+        exit 2
