@@ -109,3 +109,5 @@ runs:
         SCHEMA_DIALECT: ${{ steps.check-schema-dialect.outputs.dialect }}
       run: |
         jsonschema validate --default-dialect "$SCHEMA_DIALECT" "$SCHEMA_PATH" "$YAML_FILE"
+
+        echo "OK"
