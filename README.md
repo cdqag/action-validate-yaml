@@ -36,6 +36,12 @@ with:
 | `schema` | JSON schema to validate against. If not provided, the action will try to extract it from the YAML file using the comment `# yaml-language-server: $schema=URL`. | No | empty string |
 | `schema-dialect` | JSON schema dialect. Only used if not provided in the schema. Value must have format: `https://json-schema.org/[path]/schema` | No | empty string |
 
+## About Creator
+
+![CDQ Logo](https://www.cdq.com/themes/custom/gavias_nonid/logo.svg)
+
+This action has been created and is maitained by [CDQ - Data Quality Solutions &amp; Services for Master Data](https://www.cdq.com/).
+
 ## License
 
 This project is licensed under the Apache-2.0 License. See the [LICENSE](LICENSE) file for details.
